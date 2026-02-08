@@ -36,7 +36,10 @@ class MotionSensorManager(context: Context) {
      */
     fun startListening(): Flow<Direction> {
         // Return empty flow if sensor manager or accelerometer is null
-        if (sensorManager == null || accelerometer == null) {
+        val manager = sensorManager
+        val sensor = accelerometer
+
+        if (manager == null || sensor == null) {
             return emptyFlow()
         }
         
@@ -51,6 +54,8 @@ class MotionSensorManager(context: Context) {
                     // y: +up, -down (when device is vertical)
                     // z: perpendicular to screen
                     
+                    if (event.values.size < 2) return
+
                     val x = event.values[0]  // Tilt left/right
                     val y = event.values[1]  // Tilt forward/backward
                     
@@ -83,14 +88,14 @@ class MotionSensorManager(context: Context) {
                 }
             }
             
-            sensorManager.registerListener(
+            manager.registerListener(
                 listener,
-                accelerometer,
+                sensor,
                 SensorManager.SENSOR_DELAY_GAME
             )
             
             awaitClose {
-                sensorManager.unregisterListener(listener)
+                manager.unregisterListener(listener)
             }
         }.distinctUntilChanged()
     }
