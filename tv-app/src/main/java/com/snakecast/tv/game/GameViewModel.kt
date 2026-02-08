@@ -55,8 +55,21 @@ class GameViewModel : ViewModel() {
     /**
      * Change the snake's direction.
      * Prevents 180-degree turns.
+     * If game is over, restarts the game.
      */
     fun changeDirection(direction: Direction) {
+        // If game over, restart the game
+        if (_gameState.value.status == GameStatus.GAME_OVER) {
+            reset()
+            start()
+            return
+        }
+        
+        // If paused and controller connected, resume
+        if (_gameState.value.status == GameStatus.PAUSED && _gameState.value.isControllerConnected) {
+            start()
+        }
+        
         _gameState.update { state ->
             // Prevent reversing direction
             val isOpposite = when (direction) {
@@ -134,12 +147,12 @@ class GameViewModel : ViewModel() {
         _gameState.update { state ->
             if (state.status != GameStatus.RUNNING) return@update state
             
-            // Check for collision before moving
+            // Check for self-collision before moving
             if (state.isCollision()) {
                 return@update state.copy(status = GameStatus.GAME_OVER)
             }
             
-            val newHead = state.head.move(state.nextDirection)
+            val newHead = state.head.move(state.nextDirection, state.gridWidth, state.gridHeight)
             val eating = state.isEatingFood()
             
             val newSnake = if (eating) {
@@ -153,7 +166,7 @@ class GameViewModel : ViewModel() {
             
             // Increase speed every N foods
             if (eating && newScore % (GameConstants.SPEED_INCREASE_INTERVAL * 10) == 0) {
-                currentTickMs = maxOf(GameConstants.MIN_TICK_MS, currentTickMs - 10)
+                currentTickMs = maxOf(GameConstants.MIN_TICK_MS, currentTickMs - 15)
             }
             
             state.copy(

@@ -1,5 +1,10 @@
 package com.snakecast.mobile.ui.components
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -7,8 +12,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,13 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.snakecast.mobile.ui.theme.CardDark
@@ -32,29 +35,64 @@ import com.snakecast.mobile.ui.theme.SnakeGreenDark
 import com.snakecast.shared.Direction
 
 /**
- * D-Pad controller component with haptic feedback.
+ * Premium D-Pad controller with glassmorphic design and haptic feedback.
  */
 @Composable
 fun DPadView(
     onDirectionPressed: (Direction) -> Unit,
     activeDirection: Direction? = null,
     modifier: Modifier = Modifier,
-    size: Dp = 280.dp
+    size: Dp = 300.dp
 ) {
     val haptic = LocalHapticFeedback.current
-    val buttonSize = size * 0.35f
-    val centerOffset = size * 0.32f
+    val buttonSize = size * 0.32f
+    val centerOffset = size * 0.34f
+    
+    // Subtle glow animation
+    val infiniteTransition = rememberInfiniteTransition(label = "dpad_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
     
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center
     ) {
-        // Background circle
+        // Outer glow ring
         Box(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(CardDark.copy(alpha = 0.5f))
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            SnakeGreen.copy(alpha = glowAlpha),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        
+        // Background circle with gradient
+        Box(
+            modifier = Modifier
+                .size(size * 0.95f)
+                .shadow(12.dp, CircleShape)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            Color(0xFF2A2A4A),
+                            Color(0xFF1A1A2E)
+                        )
+                    )
+                )
         )
         
         // Up button
@@ -113,13 +151,29 @@ fun DPadView(
             rotation = 90f
         )
         
-        // Center indicator
+        // Center snake logo
         Box(
             modifier = Modifier
-                .size(buttonSize * 0.6f)
+                .size(buttonSize * 0.7f)
+                .shadow(4.dp, CircleShape)
                 .clip(CircleShape)
-                .background(CardDark)
-        )
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            Color(0xFF3A3A5A),
+                            Color(0xFF252540)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.Text(
+                text = "🐍",
+                fontSize = with(androidx.compose.ui.platform.LocalDensity.current) {
+                    (buttonSize * 0.4f).toSp()
+                }
+            )
+        }
     }
 }
 
@@ -134,13 +188,24 @@ private fun DirectionButton(
     var isPressed by remember { mutableStateOf(false) }
     
     val backgroundColor = when {
-        isActive || isPressed -> SnakeGreen
-        else -> SnakeGreenDark.copy(alpha = 0.7f)
+        isActive || isPressed -> Brush.linearGradient(
+            listOf(
+                SnakeGreen,
+                Color(0xFF2ECC71)
+            )
+        )
+        else -> Brush.linearGradient(
+            listOf(
+                SnakeGreenDark.copy(alpha = 0.8f),
+                SnakeGreenDark.copy(alpha = 0.6f)
+            )
+        )
     }
     
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(if (isActive || isPressed) 8.dp else 4.dp, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -156,22 +221,20 @@ private fun DirectionButton(
     ) {
         // Arrow indicator using Canvas
         Box(
-            modifier = Modifier
-                .size(32.dp)
-                .background(Color.Transparent)
+            modifier = Modifier.size(36.dp)
         ) {
             androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
                 val path = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(size.width / 2, size.height * 0.2f)
-                    lineTo(size.width * 0.8f, size.height * 0.7f)
-                    lineTo(size.width * 0.2f, size.height * 0.7f)
+                    moveTo(size.width / 2, size.height * 0.15f)
+                    lineTo(size.width * 0.85f, size.height * 0.75f)
+                    lineTo(size.width * 0.15f, size.height * 0.75f)
                     close()
                 }
                 
                 rotate(degrees = rotation) {
                     drawPath(
                         path = path,
-                        color = Color.White
+                        color = if (isActive || isPressed) Color.White else Color.White.copy(alpha = 0.8f)
                     )
                 }
             }
